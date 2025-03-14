@@ -1,0 +1,96 @@
+User Interface Overview
+The dashboard is designed to provide an intuitive, real-time view of fraud detection activities. It is structured into several key areas:
+
+1. Data Upload & Transaction Visualization
+File Upload Section:
+
+Appearance: A dedicated area (often positioned in a sidebar or header) where users are prompted to upload transaction files (CSV, Excel, etc.).
+Instructions & Feedback: Clear, step-by-step instructions guide users on the acceptable file formats and sizes. Error messages appear if the upload fails or if the file is not in the correct format.
+Interactive Transaction Table:
+
+Layout: A large, scrollable table displays uploaded transaction data.
+Features:
+Filtering & Sorting: Users can filter transactions by various columns (e.g., date, merchant, location) and sort them in ascending or descending order.
+Search Functionality: A search bar allows users to quickly find specific transactions by ID or other key attributes.
+Highlights: Key computed fields—such as Fraud Possibility Scores, Risk Scores, and final Flag status—are visually accentuated using color-coding or icons to differentiate low, medium, and high-risk transactions.
+2. Fraud Possibility Scores & Flagged Transactions
+Detailed Risk Display:
+
+Components: Each transaction record is augmented with multiple fraud scores:
+Bayesian Probability Score: Represents the fraud likelihood computed via Bayes’ theorem.
+MLE-Based Score: Derived from a model (e.g., logistic regression) that optimizes parameters using Maximum Likelihood Estimation.
+Combined Risk Score: A synthesized metric combining the above scores.
+Fuzzy Risk Score: A refined value using fuzzy logic to handle uncertainty and borderline cases.
+Visual Cues: Transactions that exceed a predefined risk threshold are highlighted (e.g., with red or an exclamation icon), making them immediately recognizable as suspicious.
+Detailed Analytics on Demand:
+
+Interactivity: Users can click on a flagged transaction to open a detailed view. This view provides additional insights such as:
+A breakdown of the contributing factors.
+Explanations of how each model (Bayesian, MLE, fuzzy logic) influenced the final risk score.
+Historical context or trends related to similar transactions.
+3. Real-Time Dashboard & Analytics
+Overview Metrics Panel:
+
+Key Statistics: Displays live metrics including:
+Total Transactions Processed: A running count.
+Number and Percentage of Flagged Transactions: Real-time updates reflecting suspicious activity.
+Visual Widgets: Metric cards, gauges, or summary tiles offer an at-a-glance view of system performance.
+Dynamic Visualizations:
+
+Trend Analysis:
+Line Charts: Show the evolution of fraud risk scores over time, indicating peaks and trends.
+Bar Charts: Visualize counts of flagged versus normal transactions.
+Performance Metrics:
+ROC Curve & Precision-Recall Charts: Provide insights into the detection model’s accuracy and its trade-offs.
+Layout: The dashboard organizes these visualizations into sections or tabs, allowing users to quickly switch between different views and granularities of data.
+4. Real-Time Alerts & Notifications
+Notification Area:
+Functionality: A designated panel or alert banner instantly notifies users when a transaction is flagged as suspicious.
+Visual Dynamics: Alerts update in real time without the need for a full page refresh, ensuring immediate awareness of critical events.
+Customization: Users may configure notification settings to control the frequency and type of alerts displayed.
+5. Additional Best Practices and Performance Considerations
+Responsiveness & Adaptability:
+
+The design ensures a seamless experience across devices, with the interface adapting to desktop, tablet, and mobile screens.
+The layout is clean and uncluttered, with intuitive navigation that emphasizes the most critical fraud detection information.
+Performance Optimization:
+
+Heavy data processing and visual rendering are optimized to maintain a smooth, real-time experience even under high transaction volumes.
+Caching mechanisms ensure that repeated calculations or data fetches do not slow down the interface.
+Security & Compliance:
+
+File uploads and data handling are secured to protect sensitive information.
+Detailed logs and audit trails are maintained, supporting both internal review and regulatory compliance.
+Model outputs come with explanations, ensuring that decision processes are transparent and understandable for compliance purposes.
+Underlying Models & Their Outputs
+Bayesian Model:
+
+Output: A probability score indicating the likelihood of fraud based on the transaction's features and prior data.
+Role: Provides the initial risk estimation which forms part of the combined risk assessment.
+Maximum Likelihood Estimation (MLE) Model (e.g., Logistic Regression):
+
+Output: A refined fraud probability score based on learned parameters from historical data.
+Role: Enhances the risk estimation by dynamically optimizing thresholds and parameters.
+Multi-Armed Bandit Algorithms:
+
+Output: Optimized strategies for selecting transactions that require further investigation, balancing exploration (detecting new patterns) and exploitation (acting on known patterns).
+Role: Supports decision-making for real-time transaction evaluation and prioritization.
+Fuzzy Logic System:
+
+Output: A defuzzified, crisp fraud risk score that refines and adjusts the combined risk score by handling uncertainties and borderline cases.
+Role: Finalizes the decision by integrating uncertainty management, ultimately determining whether a transaction should be flagged.
+Expected Outputs
+Transaction Table:
+
+Detailed rows for each transaction including computed scores and a clear flag (e.g., “Flagged” or “Normal”).
+Dashboard Metrics:
+
+Live counters and percentages for total transactions and flagged transactions.
+Real-time trend graphs that reflect risk score dynamics and detection performance.
+Visual Analytics:
+
+Interactive charts (line, bar, ROC curve) that provide insights into model performance and fraud trends over time.
+Alerts:
+
+Immediate notifications for transactions that breach risk thresholds, enabling swift response and detailed review.
+This comprehensive UI design ensures that users can effortlessly upload, view, analyze, and interact with transaction data while leveraging advanced fraud detection models—all in a real-time, user-friendly environment.
