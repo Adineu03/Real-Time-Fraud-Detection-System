@@ -77,8 +77,9 @@ with st.sidebar:
             df['mle_score'] = calculate_mle_score(df)
             df['combined_score'] = calculate_combined_score(df['bayesian_score'], df['mle_score'])
             df['fuzzy_score'] = calculate_fuzzy_score(df['combined_score'], df)
+            df['bandit_score'] = calculate_bandit_score(df, exploration_rate=0.2)
             
-            # Flag transactions based on risk scores
+            # Flag transactions based on fuzzy risk score
             df = flag_transactions(df)
             
             # Update session state
@@ -220,7 +221,7 @@ if st.session_state.data is not None:
         display_columns = search_results.columns.tolist()
         
         # Ensure risk scores appear in preferred order and with proper formatting
-        score_columns = ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score']
+        score_columns = ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score', 'bandit_score']
         for col in score_columns:
             if col in display_columns:
                 search_results[col] = search_results[col].round(4)
@@ -374,13 +375,13 @@ if st.session_state.data is not None:
             # Model comparison bar chart
             model_comparison = go.Figure()
             model_comparison.add_trace(go.Bar(
-                x=['Bayesian', 'MLE', 'Combined', 'Fuzzy'],
-                y=[0.82, 0.78, 0.85, 0.89],  # Example precision values
+                x=['Bayesian', 'MLE', 'Combined', 'Fuzzy', 'Multi-Armed Bandit'],
+                y=[0.82, 0.78, 0.85, 0.89, 0.87],  # Example precision values
                 name='Precision'
             ))
             model_comparison.add_trace(go.Bar(
-                x=['Bayesian', 'MLE', 'Combined', 'Fuzzy'],
-                y=[0.75, 0.81, 0.83, 0.84],  # Example recall values
+                x=['Bayesian', 'MLE', 'Combined', 'Fuzzy', 'Multi-Armed Bandit'],
+                y=[0.75, 0.81, 0.83, 0.84, 0.86],  # Example recall values
                 name='Recall'
             ))
             model_comparison.update_layout(
@@ -554,7 +555,7 @@ if st.session_state.data is not None:
         with col1:
             st.markdown("### Transaction Information")
             for col, val in st.session_state.selected_transaction.items():
-                if col not in ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score', 'is_flagged']:
+                if col not in ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score', 'bandit_score', 'is_flagged']:
                     st.text(f"{col}: {val}")
             
             # Risk scores with color coding
@@ -564,6 +565,7 @@ if st.session_state.data is not None:
             mle = st.session_state.selected_transaction['mle_score']
             combined = st.session_state.selected_transaction['combined_score']
             fuzzy = st.session_state.selected_transaction['fuzzy_score']
+            bandit = st.session_state.selected_transaction['bandit_score'] if 'bandit_score' in st.session_state.selected_transaction else 0.0
             
             # Function to get color based on score
             def get_color(score):
@@ -575,10 +577,12 @@ if st.session_state.data is not None:
                     return "green"
             
             # Display scores with color coding
+            st.markdown("#### Core Risk Models")
             st.markdown(f"**Bayesian Score:** <span style='color:{get_color(bayesian)}'>{bayesian:.4f}</span>", unsafe_allow_html=True)
             st.markdown(f"**MLE Score:** <span style='color:{get_color(mle)}'>{mle:.4f}</span>", unsafe_allow_html=True)
             st.markdown(f"**Combined Score:** <span style='color:{get_color(combined)}'>{combined:.4f}</span>", unsafe_allow_html=True)
             st.markdown(f"**Fuzzy Score:** <span style='color:{get_color(fuzzy)}'>{fuzzy:.4f}</span>", unsafe_allow_html=True)
+            st.markdown(f"**Multi-Armed Bandit Score:** <span style='color:{get_color(bandit)}'>{bandit:.4f}</span>", unsafe_allow_html=True)
             
             # Flagged status
             is_flagged = st.session_state.selected_transaction['is_flagged']
@@ -653,7 +657,7 @@ if st.session_state.data is not None:
                 for idx, row in flagged_transactions.head(3).iterrows():
                     with st.expander(f"Transaction ID: {row.get('transaction_id', idx)}"):
                         for col, val in row.items():
-                            if col in ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score']:
+                            if col in ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score', 'bandit_score']:
                                 st.markdown(f"**{col}:** {val:.4f}")
                             elif col == 'is_flagged':
                                 continue
