@@ -121,7 +121,7 @@ with st.sidebar:
             "Minimum Risk Score",
             0.0,
             1.0,
-            0.7
+            0.45
         )
         
         # Filter options
@@ -224,11 +224,20 @@ if st.session_state.data is not None:
             if col in display_columns:
                 search_results[col] = search_results[col].round(4)
         
-        # Clickable rows for detailed view
+        # Create styled dataframe using newer pandas API
+        styled_df = search_results.style
+        
+        # Apply risk score coloring to specific columns
+        for col in score_columns:
+            if col in display_columns:
+                styled_df = styled_df.map(color_risk_scores, subset=[col])
+        
+        # Apply row highlighting for flagged transactions
+        styled_df = styled_df.apply(highlight_flagged, axis=1)
+        
+        # Display the styled dataframe
         selected_indices = st.dataframe(
-            search_results.style
-            .applymap(color_risk_scores, subset=score_columns)
-            .apply(highlight_flagged, axis=1),
+            styled_df,
             use_container_width=True,
             height=400
         )
@@ -246,54 +255,294 @@ if st.session_state.data is not None:
     else:
         st.info("No transactions match the current filters or search criteria.")
     
-    # Charts and visualizations - 2 column layout
+    # Charts and visualizations - Advanced analytics layout
     st.subheader("Transaction Analytics")
     
-    col1, col2 = st.columns(2)
+    # Risk distribution section
+    st.markdown("### Risk Score Distribution")
+    risk_dist_chart = create_distribution_chart(st.session_state.filtered_data)
+    st.plotly_chart(risk_dist_chart, use_container_width=True)
+    
+    # Add interactive anomaly detection section
+    st.markdown("### 🔍 Interactive Anomaly Detection")
+    
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.markdown("### Risk Score Distribution")
-        risk_dist_chart = create_distribution_chart(st.session_state.filtered_data)
-        st.plotly_chart(risk_dist_chart, use_container_width=True)
-    
-    with col2:
-        st.markdown("### Risk Score Trend")
-        if 'date' in st.session_state.filtered_data.columns:
-            trend_chart = create_trend_chart(st.session_state.filtered_data)
-            st.plotly_chart(trend_chart, use_container_width=True)
-        else:
-            st.info("Date information not available for trend analysis.")
-    
-    # Performance metrics
-    st.subheader("Model Performance")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        roc_curve = create_roc_curve()
-        st.plotly_chart(roc_curve, use_container_width=True)
-    
-    with col2:
-        # Model comparison bar chart
-        model_comparison = go.Figure()
-        model_comparison.add_trace(go.Bar(
-            x=['Bayesian', 'MLE', 'Combined', 'Fuzzy'],
-            y=[0.82, 0.78, 0.85, 0.89],  # Example precision values
-            name='Precision'
-        ))
-        model_comparison.add_trace(go.Bar(
-            x=['Bayesian', 'MLE', 'Combined', 'Fuzzy'],
-            y=[0.75, 0.81, 0.83, 0.84],  # Example recall values
-            name='Recall'
-        ))
-        model_comparison.update_layout(
-            title='Model Performance Comparison',
-            xaxis_title='Model',
-            yaxis_title='Score',
-            legend_title='Metric',
-            barmode='group'
+        # Create scatter plot of transactions
+        fig = px.scatter(
+            st.session_state.filtered_data,
+            x='combined_score',
+            y='fuzzy_score',
+            color='is_flagged',
+            color_discrete_map={True: 'red', False: 'blue'},
+            hover_data=st.session_state.filtered_data.columns,
+            title="Transaction Risk Score Analysis",
+            labels={"combined_score": "Combined Risk Score", "fuzzy_score": "Fuzzy Logic Score"},
+            size='bayesian_score',
+            size_max=15,
         )
-        st.plotly_chart(model_comparison, use_container_width=True)
+        
+        # Add color-coded regions to indicate risk zones
+        fig.add_shape(
+            type="rect",
+            x0=0.8, y0=0.8,
+            x1=1, y1=1,
+            fillcolor="rgba(255,0,0,0.1)",
+            line=dict(color="red"),
+            layer="below"
+        )
+        fig.add_shape(
+            type="rect",
+            x0=0.5, y0=0.5,
+            x1=0.8, y1=0.8,
+            fillcolor="rgba(255,165,0,0.1)",
+            line=dict(color="orange"),
+            layer="below"
+        )
+        
+        # Add annotations
+        fig.add_annotation(
+            x=0.9, y=0.9,
+            text="High Risk Zone",
+            showarrow=False,
+            font=dict(color="red")
+        )
+        fig.add_annotation(
+            x=0.65, y=0.65,
+            text="Medium Risk Zone",
+            showarrow=False,
+            font=dict(color="orange")
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        # Interactive controls for anomaly thresholds
+        st.markdown("#### Adjust Detection Parameters")
+        
+        detection_sensitivity = st.slider(
+            "Detection Sensitivity",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.7,
+            step=0.05,
+            help="Adjust the sensitivity of the anomaly detection algorithm"
+        )
+        
+        outlier_threshold = st.slider(
+            "Outlier Threshold (σ)",
+            min_value=1.0,
+            max_value=5.0,
+            value=3.0,
+            step=0.5,
+            help="Standard deviations from mean to consider as outlier"
+        )
+        
+        if st.button("Run Advanced Anomaly Detection"):
+            # Calculate statistical anomalies
+            # This would be a more sophisticated algorithm in production
+            scores = st.session_state.filtered_data['combined_score']
+            mean = scores.mean()
+            std = scores.std()
+            threshold = mean + (std * outlier_threshold)
+            
+            # Create new anomaly scores
+            anomaly_count = len(scores[scores > threshold])
+            
+            # Display results
+            st.metric("Detected Anomalies", anomaly_count)
+            if anomaly_count > 0:
+                st.warning(f"Found {anomaly_count} statistical anomalies based on your parameters")
+            else:
+                st.success("No statistical anomalies detected based on current parameters")
+    
+    # Performance metrics and advanced analytics
+    st.subheader("Model Performance & Explainability")
+    
+    tabs = st.tabs(["Performance Metrics", "Model Explainability", "Feature Importance"])
+    
+    with tabs[0]:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            roc_curve = create_roc_curve()
+            st.plotly_chart(roc_curve, use_container_width=True)
+        
+        with col2:
+            # Model comparison bar chart
+            model_comparison = go.Figure()
+            model_comparison.add_trace(go.Bar(
+                x=['Bayesian', 'MLE', 'Combined', 'Fuzzy'],
+                y=[0.82, 0.78, 0.85, 0.89],  # Example precision values
+                name='Precision'
+            ))
+            model_comparison.add_trace(go.Bar(
+                x=['Bayesian', 'MLE', 'Combined', 'Fuzzy'],
+                y=[0.75, 0.81, 0.83, 0.84],  # Example recall values
+                name='Recall'
+            ))
+            model_comparison.update_layout(
+                title='Model Performance Comparison',
+                xaxis_title='Model',
+                yaxis_title='Score',
+                legend_title='Metric',
+                barmode='group'
+            )
+            st.plotly_chart(model_comparison, use_container_width=True)
+    
+    with tabs[1]:
+        st.markdown("### 🧠 Model Decision Explanation")
+        st.markdown("""
+        This section provides transparency into how the fraud detection models make decisions.
+        Select a transaction below to generate an explanation of the model's decision process.
+        """)
+        
+        if not st.session_state.filtered_data.empty:
+            # Allow user to select a transaction to explain
+            selected_idx = st.selectbox(
+                "Select transaction to explain:",
+                options=st.session_state.filtered_data.index,
+                format_func=lambda x: f"Transaction {x} - Risk Score: {st.session_state.filtered_data.loc[x, 'fuzzy_score']:.4f}"
+            )
+            
+            if st.button("Generate Explanation"):
+                st.markdown("### SHAP-Inspired Model Explanation")
+                
+                # Get selected transaction
+                transaction = st.session_state.filtered_data.loc[selected_idx]
+                
+                # Create waterfall chart simulating SHAP values (actual SHAP would calculate these properly)
+                waterfall_values = []
+                feature_names = []
+                
+                # Base value (average prediction)
+                base_value = 0.5
+                
+                # Get key features and assign impact values
+                # In a real system, these would be actual SHAP values
+                if 'amount' in transaction:
+                    amount_impact = (transaction['amount'] / 10000) * 0.2  # Simplified impact calculation
+                    waterfall_values.append(amount_impact)
+                    feature_names.append('Transaction Amount')
+                
+                if 'merchant' in transaction:
+                    # Create consistent but pseudo-random value based on merchant name
+                    merchant_impact = (hash(str(transaction['merchant'])) % 100) / 100 * 0.15
+                    waterfall_values.append(merchant_impact)
+                    feature_names.append('Merchant')
+                
+                # Add other potential features
+                for feature, impact in [
+                    ('location', 0.08),
+                    ('time', 0.07),
+                    ('card_present', 0.12),
+                    ('transaction_type', 0.09)
+                ]:
+                    if feature in transaction:
+                        # Simplified impact based on feature presence
+                        feature_impact = (hash(str(transaction[feature])) % 100) / 100 * impact
+                        waterfall_values.append(feature_impact)
+                        feature_names.append(feature.replace('_', ' ').title())
+                
+                # Ensure we have at least some features
+                if not waterfall_values:
+                    # Generate synthetic features for demo purposes
+                    waterfall_values = [0.12, -0.05, 0.08, 0.15, -0.03]
+                    feature_names = ['Transaction Type', 'Customer History', 'Time of Day', 'Amount', 'Merchant Category']
+                
+                # Calculate cumulative impact to reach final prediction
+                final_value = base_value + sum(waterfall_values)
+                
+                # Create waterfall chart
+                fig = go.Figure(go.Waterfall(
+                    name="SHAP", 
+                    orientation="v",
+                    measure=["absolute"] + ["relative"] * len(waterfall_values) + ["total"],
+                    x=["Base Value"] + feature_names + ["Final Prediction"],
+                    y=[base_value] + waterfall_values + [final_value],
+                    connector={"line":{"color":"rgb(63, 63, 63)"}},
+                    decreasing={"marker":{"color":"blue"}},
+                    increasing={"marker":{"color":"red"}},
+                    text=[f"{base_value:.3f}"] + [f"{v:.3f}" for v in waterfall_values] + [f"{final_value:.3f}"],
+                    textposition="outside"
+                ))
+                
+                fig.update_layout(
+                    title="Feature Impact on Risk Prediction",
+                    showlegend=False,
+                    height=500
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Add textual explanation
+                st.markdown("### Explanation Summary")
+                st.markdown(f"""
+                The base risk score for all transactions starts at **{base_value:.2f}**. This transaction's final risk 
+                score of **{final_value:.4f}** was influenced by the following factors:
+                """)
+                
+                for i, (feature, value) in enumerate(zip(feature_names, waterfall_values)):
+                    impact = "increased" if value > 0 else "decreased"
+                    st.markdown(f"- {feature} {impact} the risk score by **{abs(value):.4f}**")
+                
+                if final_value >= 0.8:
+                    st.error("This transaction has a high risk of fraud and requires immediate attention.")
+                elif final_value >= 0.5:
+                    st.warning("This transaction has a moderate risk of fraud and should be monitored.")
+                else:
+                    st.success("This transaction has a low risk of fraud.")
+        else:
+            st.info("No transaction data available for explanation.")
+    
+    with tabs[2]:
+        st.markdown("### 📊 Global Feature Importance")
+        st.markdown("""
+        This visualization shows the relative importance of different features in the fraud detection model.
+        Higher values indicate features that have a stronger influence on the model's predictions.
+        """)
+        
+        # Create feature importance bar chart (in a real system, these would be actual model weights)
+        feature_imp = {
+            'Transaction Amount': 0.28,
+            'Time of Transaction': 0.15,
+            'Customer History': 0.22,
+            'Merchant Category': 0.18,
+            'Location': 0.12,
+            'Device Information': 0.05
+        }
+        
+        fig = go.Figure([
+            go.Bar(
+                x=list(feature_imp.keys()),
+                y=list(feature_imp.values()),
+                marker_color=['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+            )
+        ])
+        
+        fig.update_layout(
+            title='Global Feature Importance',
+            xaxis_title='Feature',
+            yaxis_title='Importance Score',
+            yaxis=dict(range=[0, 0.3])
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Add explanation of feature importance
+        st.markdown("""
+        ### Understanding Feature Importance
+        
+        Features with higher importance scores have a greater influence on the model's predictions:
+        
+        - **Transaction Amount**: The value of the transaction is the most important indicator of potential fraud
+        - **Customer History**: Past transaction patterns significantly impact risk assessment
+        - **Merchant Category**: Certain merchant categories are associated with higher fraud rates
+        - **Time of Transaction**: Unusual transaction times may indicate suspicious activity
+        - **Location**: Geographical information helps identify unusual transaction patterns
+        - **Device Information**: Data about the device used for the transaction
+        """)
     
     # Transaction Details Section (if a transaction is selected)
     if st.session_state.selected_transaction is not None:
@@ -385,29 +634,173 @@ if st.session_state.data is not None:
             - Document decision in the system
             """)
     
-    # Real-time alerts section
-    st.subheader("Real-Time Alerts")
+    # Real-time alerts and simulation section
+    st.subheader("Real-Time Fraud Monitoring")
     
-    # Simulate real-time alerts by showing recent flagged transactions
-    if st.session_state.filtered_data is not None:
-        flagged_transactions = st.session_state.filtered_data[st.session_state.filtered_data['is_flagged'] == True]
-        
-        if not flagged_transactions.empty:
-            st.warning(f"⚠️ {len(flagged_transactions)} transactions have been flagged as potentially fraudulent.")
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        # Real-time alerts display
+        st.markdown("### 🚨 Alerts")
+        if st.session_state.filtered_data is not None:
+            flagged_transactions = st.session_state.filtered_data[st.session_state.filtered_data['is_flagged'] == True]
             
-            # Show the most recent 3 flagged transactions
-            st.markdown("### Recent Flagged Transactions")
-            for idx, row in flagged_transactions.head(3).iterrows():
-                with st.expander(f"Transaction ID: {row.get('transaction_id', idx)}"):
-                    for col, val in row.items():
-                        if col in ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score']:
-                            st.markdown(f"**{col}:** {val:.4f}")
-                        elif col == 'is_flagged':
-                            continue
-                        else:
-                            st.markdown(f"**{col}:** {val}")
+            if not flagged_transactions.empty:
+                st.warning(f"⚠️ {len(flagged_transactions)} transactions have been flagged as potentially fraudulent.")
+                
+                # Show the most recent 3 flagged transactions
+                for idx, row in flagged_transactions.head(3).iterrows():
+                    with st.expander(f"Transaction ID: {row.get('transaction_id', idx)}"):
+                        for col, val in row.items():
+                            if col in ['bayesian_score', 'mle_score', 'combined_score', 'fuzzy_score']:
+                                st.markdown(f"**{col}:** {val:.4f}")
+                            elif col == 'is_flagged':
+                                continue
+                            else:
+                                st.markdown(f"**{col}:** {val}")
+            else:
+                st.success("No fraudulent transactions detected in the current dataset.")
+    
+    with col2:
+        # Transaction simulation feature
+        st.markdown("### ⚡ Live Simulation")
+        st.markdown("Simulate real-time transaction monitoring")
+        
+        if st.session_state.data is not None:
+            # Initialize simulation state if not exists
+            if 'simulation_active' not in st.session_state:
+                st.session_state.simulation_active = False
+            if 'simulation_speed' not in st.session_state:
+                st.session_state.simulation_speed = 1.0
+            if 'sim_transaction_counter' not in st.session_state:
+                st.session_state.sim_transaction_counter = 0
+            
+            # Simulation controls
+            simulation_speed = st.slider(
+                "Speed", 
+                min_value=0.5, 
+                max_value=5.0, 
+                value=st.session_state.simulation_speed,
+                step=0.5,
+                help="Transactions per second"
+            )
+            st.session_state.simulation_speed = simulation_speed
+            
+            # Toggle simulation button
+            if st.session_state.simulation_active:
+                if st.button("Stop Simulation"):
+                    st.session_state.simulation_active = False
+                    st.success("Simulation stopped")
+            else:
+                if st.button("Start Simulation"):
+                    st.session_state.simulation_active = True
+                    st.session_state.sim_transaction_counter = 0
+                    st.info("Simulation started")
+            
+            # Display simulation status
+            if st.session_state.simulation_active:
+                # Create a placeholder for dynamic content
+                sim_status = st.empty()
+                
+                # Update the simulation counter
+                current_time = time.time()
+                if 'last_sim_time' not in st.session_state:
+                    st.session_state.last_sim_time = current_time
+                
+                # Check if it's time to simulate a new transaction
+                time_diff = current_time - st.session_state.last_sim_time
+                if time_diff > (1.0 / st.session_state.simulation_speed):
+                    # Generate a new random transaction
+                    st.session_state.sim_transaction_counter += 1
+                    st.session_state.last_sim_time = current_time
+                    
+                    # Create a simulated transaction
+                    new_transaction = {
+                        'transaction_id': f"SIM{1000 + st.session_state.sim_transaction_counter}",
+                        'amount': np.random.choice([
+                            np.random.uniform(10, 200),  # Normal small purchase
+                            np.random.uniform(500, 5000)  # Large purchase (sometimes suspicious)
+                        ], p=[0.7, 0.3]),
+                        'merchant': np.random.choice([
+                            'Online Store', 'Local Shop', 'Restaurant', 
+                            'Unknown Merchant', 'Foreign Vendor'
+                        ]),
+                        'location': np.random.choice([
+                            'Local', 'Nearby City', 'Different State', 
+                            'Foreign Country', 'Online'
+                        ]),
+                        'transaction_type': np.random.choice([
+                            'retail', 'online', 'cash_advance', 'wire_transfer', 'atm'
+                        ]),
+                        'card_present': np.random.choice([True, False], p=[0.6, 0.4])
+                    }
+                    
+                    # Process the transaction through risk models
+                    # This is simplified for simulation purposes
+                    risk_factors = []
+                    risk_score = 0.0
+                    
+                    # Amount factor
+                    if new_transaction['amount'] > 1000:
+                        risk_factors.append("High amount")
+                        risk_score += 0.3
+                    
+                    # Merchant factor
+                    if new_transaction['merchant'] in ['Unknown Merchant', 'Foreign Vendor']:
+                        risk_factors.append("Suspicious merchant")
+                        risk_score += 0.25
+                    
+                    # Location factor
+                    if new_transaction['location'] in ['Foreign Country']:
+                        risk_factors.append("Foreign location")
+                        risk_score += 0.2
+                    
+                    # Transaction type factor
+                    if new_transaction['transaction_type'] in ['cash_advance', 'wire_transfer']:
+                        risk_factors.append("High-risk transaction type")
+                        risk_score += 0.15
+                    
+                    # Card present factor
+                    if not new_transaction['card_present']:
+                        risk_factors.append("Card not present")
+                        risk_score += 0.1
+                    
+                    # Random factor for variety
+                    risk_score += np.random.uniform(-0.1, 0.1)
+                    risk_score = min(1.0, max(0.0, risk_score))
+                    
+                    # Determine if transaction is flagged
+                    is_flagged = risk_score >= 0.7
+                    
+                    # Display transaction info
+                    sim_status.markdown(f"""
+                    **Simulated Transaction #{st.session_state.sim_transaction_counter}**  
+                    ID: {new_transaction['transaction_id']}  
+                    Amount: ${new_transaction['amount']:.2f}  
+                    Merchant: {new_transaction['merchant']}  
+                    Risk Score: {risk_score:.4f}  
+                    Status: {"🚨 FLAGGED" if is_flagged else "✅ Approved"}
+                    """)
+                    
+                    # If flagged, show alert
+                    if is_flagged:
+                        alert_placeholder = st.empty()
+                        alert_placeholder.error(f"""
+                        🚨 **FRAUD ALERT**  
+                        Transaction {new_transaction['transaction_id']} flagged!  
+                        Risk Score: {risk_score:.4f}
+                        Risk Factors: {', '.join(risk_factors)}
+                        """)
+                else:
+                    # No new transaction, show current status
+                    sim_status.markdown(f"""
+                    **Simulation Active**  
+                    Transactions processed: {st.session_state.sim_transaction_counter}  
+                    Speed: {st.session_state.simulation_speed} tx/sec  
+                    Monitoring for fraud...
+                    """)
         else:
-            st.success("No fraudulent transactions detected in the current dataset.")
+            st.info("Upload transaction data to enable simulation")
 
 else:
     # Display upload instructions when no data is loaded

@@ -1,0 +1,21 @@
+transaction_id,amount,merchant,location,transaction_type,card_present
+1001,120.50,Walmart,New York,retail,True
+1002,1500.00,Best Buy,Chicago,electronics,True
+1003,75.25,Amazon,Online,e-commerce,False
+1004,2450.00,Apple Store,San Francisco,electronics,True
+1005,18.75,Starbucks,Boston,food,True
+1006,3500.00,Unknown Merchant,Moscow,cash_advance,False
+1007,250.00,Target,Miami,retail,True
+1008,1200.00,Airline Tickets,Online,travel,False
+1009,85.40,Gas Station,Los Angeles,fuel,True
+1010,2100.00,Online Electronics,Online,e-commerce,False
+1011,45.60,Restaurant,Chicago,food,True
+1012,4500.00,Jewelry Store,Las Vegas,luxury,True
+1013,125.75,Department Store,Dallas,retail,True
+1014,350.00,Hotel,Paris,travel,False
+1015,95.20,Pharmacy,Toronto,healthcare,True
+1016,5000.00,Crypto Exchange,Online,financial,False
+1017,35.99,Fast Food,Phoenix,food,True
+1018,1800.00,Foreign Transfer,Singapore,wire_transfer,False
+1019,75.45,Grocery Store,Seattle,retail,True
+1020,2200.00,Gaming Platform,Online,entertainment,False
