@@ -3,6 +3,7 @@ import pandas as pd
 from scipy import stats
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
+import random
 
 def calculate_bayesian_score(df):
     """
@@ -145,6 +146,50 @@ def calculate_fuzzy_score(combined_scores, df):
     fuzzy_scores = np.clip(fuzzy_scores, 0, 1)
     
     return fuzzy_scores
+
+def calculate_bandit_score(df, exploration_rate=0.2):
+    """
+    Applies Multi-Armed Bandit algorithm concepts to balance between
+    exploration (finding new fraud patterns) and exploitation (using known patterns)
+    
+    Parameters:
+    df (pd.DataFrame): Transaction data with initial risk scores
+    exploration_rate (float): Rate of exploration vs exploitation (epsilon in epsilon-greedy)
+    
+    Returns:
+    pd.Series: Bandit-adjusted risk scores
+    """
+    # Start with combined scores if available, otherwise use available scores
+    if 'combined_score' in df.columns:
+        base_scores = df['combined_score'].copy()
+    elif 'bayesian_score' in df.columns:
+        base_scores = df['bayesian_score'].copy()
+    else:
+        # Create base scores if none exist
+        base_scores = pd.Series(np.random.beta(2, 5, size=len(df)))
+    
+    # Apply exploration vs exploitation strategy (epsilon-greedy approach)
+    bandit_scores = base_scores.copy()
+    
+    # For each transaction, decide whether to explore or exploit
+    for i in range(len(df)):
+        if random.random() < exploration_rate:
+            # Exploration: adjust the score to try different actions
+            # In a real system, this would use contextual bandits with actual features
+            if bandit_scores.iloc[i] > 0.5:
+                # For high-risk transactions, occasionally explore lower risk assessment
+                bandit_scores.iloc[i] = max(0, bandit_scores.iloc[i] - random.uniform(0, 0.3))
+            else:
+                # For low-risk transactions, occasionally explore higher risk assessment
+                bandit_scores.iloc[i] = min(1, bandit_scores.iloc[i] + random.uniform(0, 0.3))
+    
+    # In a real system, we would update our bandit strategy based on feedback
+    # (whether flagged transactions were actually fraudulent)
+    
+    # Clip values to ensure they're between 0 and 1
+    bandit_scores = np.clip(bandit_scores, 0, 1)
+    
+    return bandit_scores
 
 def flag_transactions(df, threshold=0.8):
     """

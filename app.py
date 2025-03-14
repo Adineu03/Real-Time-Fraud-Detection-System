@@ -11,6 +11,7 @@ from utils.risk_models import (
     calculate_mle_score,
     calculate_combined_score,
     calculate_fuzzy_score,
+    calculate_bandit_score,
     flag_transactions
 )
 from utils.visualization import (
